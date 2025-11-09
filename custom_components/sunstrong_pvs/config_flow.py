@@ -23,7 +23,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.typing import VolDictType
 
 from .const import (
@@ -44,11 +44,11 @@ INSTALLER_AUTH_USERNAME = "installer"
 
 
 async def validate_input(
-    hass: HomeAssistant, host: str, client_id: str = None, token_secret: str = None
+        hass: HomeAssistant, host: str, client_id: str = None, errors: bool = False
 ) -> PVS:
     """Validate the user input allows us to connect."""
-    pvs = PVS(session=async_get_clientsession(hass, False), host=host)
-    await pvs.validate()
+    pvs = PVS(session=async_create_clientsession(hass, False), host=host)
+    errors = await pvs.validate()
     return pvs
 
 
@@ -148,10 +148,36 @@ class PVSConfigFlow(ConfigFlow, domain=DOMAIN):
         self, entry_data: Mapping[str, Any]
     ) -> ConfigFlowResult:
         """Handle configuration by re-auth."""
+        # self._reauth_entry = self._get_reauth_entry()
+        # if unique_id := self._reauth_entry.unique_id:
+        #     await self.async_set_unique_id(unique_id, raise_on_progress=False)
+        # return await self.async_step_user()
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+            self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Dialong that informs the user that reauth is required."""
         self._reauth_entry = self._get_reauth_entry()
-        if unique_id := self._reauth_entry.unique_id:
+        errors = False
+
+        if user_input is not None:
+            await validate_input(
+                    self.hass,
+                    reauth_entry.data[CONF_HOST],
+                    errors,
+            )
+
+            if not errors:
+                return self.async_update_reload_and_abort(
+                        reauth_entry,
+                        data_updates=user_input,
+                )
+
+        if unique_id := self.reauth_entry.unique_id:
             await self.async_set_unique_id(unique_id, raise_on_progress=False)
         return await self.async_step_user()
+
 
     def _async_pvs_name(self) -> str:
         """Return the name of the pvs."""

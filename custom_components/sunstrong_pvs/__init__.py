@@ -8,7 +8,7 @@ from homeassistant.const import CONF_HOST, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .const import DOMAIN, PLATFORMS
 from .coordinator import PVSUpdateCoordinator, PVSConfigEntry
@@ -20,7 +20,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: PVSConfigEntry) -> bool:
     host = entry.data.get(CONF_HOST)
     password = entry.data.get(CONF_PASSWORD)
 
-    session = async_get_clientsession(hass)
+    session = async_create_clientsession(hass)
     pvs = PVS(session=session, host=host, user="ssm_owner", password=password)
 
     coordinator = PVSUpdateCoordinator(hass, pvs, entry)
